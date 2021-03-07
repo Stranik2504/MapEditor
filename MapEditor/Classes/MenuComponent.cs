@@ -1,103 +1,131 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Content;
 using System.IO;
-using System.Diagnostics;
-using System.Xml.Serialization; //XML
 
 namespace MapEditor.Classes
 {
-    delegate void Go(GameTime gameTime, MenuComponent menu);
-
+    public delegate void GetCharacteristic(string filePath, string name, Texture2D texture);
     class MenuComponent
     {
-        #region Создание
+        #region Create
         private Texture2D texture;
+        private SpriteFont spriteFont;
         private Rectangle boundingBox;
-        private Rectangle textureBoundingBox;
-        private Rectangle mouseBoundingBox;
-        private MouseState mouse;
-        private int heightNumber;
-        private int number;
-        private int width;
-        private int height;
-        private int indent;
-        private int indentHeight;
-        private int widthTexture;   //Ширин полоски
+        private Vector2 position;
+        private KeyboardState keyboard;
+        private KeyboardState prevKeyboard;
+        private Keys key;
+        private int widthObject;
+        private int heightObject;
+        private int delay = 0;
+        private int timer = 30;
         private string way;
-        private bool go;    // Когда нажали на элемент в menu
-        private int timer = 60;
-        private int delay = 60;
-        public event Go onGo;
-        #endregion Создание
+        private string name;
+        private bool isVisible;
+        private bool activate = false;
+        private bool activateOnButton = false;
+        public event GetCharacteristic Action;
+        public event SetCharacteristic setCharacteristicSave;
+        #endregion Create
 
-        #region Публичные поля
-        public string Way { get { return way; } }
-        public bool Go { get { return go; } set { go = value; } }
-        #endregion Публичные поля
+        #region Public fields
+        public bool IsVisible { get { return isVisible; } }
+        public float Y { get { return position.X; } }
+        #endregion Public fields
 
-        #region Реализация
+        #region Methods
 
-        public MenuComponent(string way, int number, int widthTexture, int indentHeight, int width, int height, int indent, int hightNumber)
+        private bool CheckKeyBoard(Keys key)
         {
+            return (keyboard.IsKeyDown(key) && !prevKeyboard.IsKeyDown(key));
+        }
+
+        public void GetCharacteristic(string filePath, GraphicsDevice GraphicsDevice)
+        {
+            way = filePath;
+            name = way;
+            name = name.Remove(name.IndexOf("."), name.Length - name.IndexOf("."));
+            while (name.IndexOf(@"\") > -1)
+            {
+                name = name.Remove(0, name.IndexOf(@"\") + 1);
+            }
+            texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@way));
+            isVisible = true;
+        }
+
+        public void GetOpenedCharacteristic(GraphicsDevice GraphicsDevice, int x, int y, float widthObject, float heightObject, float rotation, string way, string name)
+        {
+            texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@way));
+            position.X = x;
+            position.Y = y;
+            this.widthObject = (int)widthObject;
+            this.heightObject = (int)heightObject;
             this.way = way;
-            this.heightNumber = hightNumber;
-            this.number = number;
-            this.indentHeight = indentHeight;
-            this.width = width;
-            this.height = height;
-            this.indent = indent;
-            this.widthTexture = widthTexture;
+            this.name = name;
+            isVisible = true;
         }
 
-        public void LoadContent(GraphicsDevice GraphicsDevice)
+        public void Scroll(int coefficient)
         {
-            try
-            {
-                texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@way));
-            }
-            catch { }
+            position.Y += coefficient;
         }
 
-        public void Update(GameTime gameTime, MenuComponent menu)
+        public void NewCharacteristic(int x, int y, int height, int width)
         {
-            mouse = Mouse.GetState();
-            mouseBoundingBox = new Rectangle((int)mouse.Position.X, (int)mouse.Position.Y, 0, 0);
-            boundingBox = new Rectangle(width - widthTexture, indentHeight + heightNumber * number, widthTexture, heightNumber);
-            textureBoundingBox = new Rectangle(boundingBox.X, boundingBox.Y, heightNumber, heightNumber);
+            widthObject = width;
+            heightObject = height;
+            position.X = x;
+            position.Y = y;
+        }
 
-            if (mouseBoundingBox.Intersects(boundingBox))
+        public void SetCharacteristicSave()
+        {
+            setCharacteristicSave((int)position.X, (int)position.Y, widthObject, heightObject, 0, way, name);
+        }
+
+        public void unIsVisible()
+        {
+            isVisible = !isVisible;
+        }
+
+        public void GetSpriteFont(SpriteFont spriteFont)
+        {
+            this.spriteFont = spriteFont;
+        }
+
+        public void ActivateButton(Keys key)
+        {
+            this.key = key;
+            activateOnButton = true;
+        }
+
+        public void Update(GameTime gameTime, MouseState mouse, Rectangle mouseBoundingBox, KeyboardState keyboard, KeyboardState prevKeyboard)
+        {
+            this.keyboard = keyboard;
+            if (isVisible == true)
             {
-                if (mouse.LeftButton == ButtonState.Pressed)
-                {
-                    if (delay >= timer)
-                    {
-                        delay = 0;
-                        onGo(gameTime, menu);
-                    }
-                }
+                boundingBox = new Rectangle((int)position.X, (int)position.Y, widthObject, heightObject);
+
+                if (mouseBoundingBox.Intersects(boundingBox)) { if (mouse.LeftButton == ButtonState.Pressed) { if (activate == false) { if (delay >= timer) { activate = true; Action(way, name, texture); delay = 0; } } } else { activate = false; } } else { activate = false; }
+                if(delay >= 0) { if(delay <= timer) { delay++; } }
             }
 
-            if (delay <= timer)
-            {
-                delay++;
-            }
+            if (activateOnButton == true) { if (CheckKeyBoard(key) == true) { if (activate == false) { activate = true; Action(way, name, texture); } } else { activate = false; } }
+            this.prevKeyboard = this.keyboard;
         }
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            try
+            if (isVisible == true)
             {
-                spriteBatch.Draw(texture, textureBoundingBox, Color.White);
+                try { spriteBatch.Draw(texture, boundingBox, Color.White); } catch { }
+                try { spriteBatch.DrawString(spriteFont, name, new Vector2(boundingBox.X + boundingBox.Width + 5, boundingBox.Y + ((boundingBox.Height - 20) / 2)), Color.LightGray); } catch { }
             }
-            catch { }
         }
 
-        #endregion Реализация
+        #endregion Methods
     }
 }

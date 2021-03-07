@@ -1,98 +1,81 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.IO;
-using System.Diagnostics;
-using System.Xml.Serialization; //XML
+using Microsoft.Xna.Framework.Content;
 
 namespace MapEditor.Classes
 {
     class Field
     {
-        #region Создание
+        #region Create
         private Texture2D texture;
-        private Rectangle[,] cells;
-        private int widthCell;
-        private int heightCell;
+        private Texture2D texture2;
+        private Rectangle[,] field;
+        private Rectangle[,] field2;
         private int width;
         private int height;
-        private int numberWideth;
-        private int numberHeight;
-        #endregion Создание
+        private int widthCell;
+        private int row;
+        private int col;
+        private bool isVisible = false;
+        #endregion Create
 
-        #region Реализация
+        #region Public fields
+        public bool IsVisible { get { return isVisible; } }
+        #endregion Public fields
 
-        public void LoadContent(GraphicsDevice GraphicsDevice)
+        #region Methods
+
+        public void LoadContent(ContentManager content)
         {
-            texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@"Content\cell.png"));
+            texture = content.Load<Texture2D>("cell");
+            texture2 = content.Load<Texture2D>("cell2");
         }
 
-        public void WidthHeight(int width, int height, int widthCell, int heightCell)
+        public void GetWH(int width, int height)
         {
             this.width = width;
             this.height = height;
-            this.heightCell = heightCell;
-            this.widthCell = widthCell;
-            if (width % widthCell > 0)
-            {
-                if (height % heightCell > 0)
-                {
-                    cells = new Rectangle[(width / widthCell) + 1, (height / heightCell) + 1];
-                    numberWideth = (width / widthCell) + 1;
-                    numberHeight = (height / heightCell) + 1;
-                }
-                else
-                {
-                    cells = new Rectangle[(width / widthCell) + 1, height / heightCell];
-                    numberWideth = (width / widthCell) + 1;
-                    numberHeight = height / heightCell;
-                }
-            }
-            else
-            {
-                if (height % heightCell > 0)
-                {
-                    cells = new Rectangle[width / widthCell, (height / heightCell) + 1];
-                    numberWideth = width / widthCell;
-                    numberHeight = (height / heightCell) + 1;
-                }
-                else
-                {
-                    cells = new Rectangle[width / widthCell, height / heightCell];
-                    numberWideth = width / widthCell;
-                    numberHeight = height / heightCell;
-                }
-            }
-
         }
 
-        public void Update(GameTime gameTime)
+        public void CreateField(int widthCell)
         {
-            for (int i = 0; i < numberWideth; i++)
+            this.widthCell = widthCell;
+            if (height % this.widthCell != 0) { row = height / this.widthCell + 1; } else { row = height / this.widthCell; }
+            if (width % this.widthCell != 0) { col = width / this.widthCell + 1; } else { col = width / this.widthCell; }
+            field = new Rectangle[row, col];
+            field2 = new Rectangle[row, col];
+            for (int i = 0; i < row; i++)
             {
-                for (int g = 0; g < numberHeight; g++)
+                for (int q = 0; q < col; q++)
                 {
-                    cells[i, g] = new Rectangle(widthCell * i, heightCell * g, widthCell, heightCell);
+                    field[i, q] = new Rectangle(this.widthCell * q, this.widthCell * i, this.widthCell, this.widthCell);
+                    field2[i, q] = new Rectangle(this.widthCell * q + 1, this.widthCell * i + 1, this.widthCell - 1, this.widthCell - 1);
                 }
             }
+        }
+
+        public void unIsVisible()
+        {
+            isVisible = !isVisible;
         }
 
         public void Draw(SpriteBatch spriteBatch)
         {
-            for (int i = 0; i < numberWideth; i++)
+            if (isVisible == true)
             {
-                for (int g = 0; g < numberHeight; g++)
+                for (int i = 0; i < row; i++)
                 {
-                    spriteBatch.Draw(texture, cells[i, g], Color.White);
+                    for (int q = 0; q < col; q++)
+                    {
+                        spriteBatch.Draw(texture, field[i, q], Color.White);
+                        spriteBatch.Draw(texture2, field2[i, q], Color.White);
+                    }
                 }
             }
         }
 
-        #endregion Реализация
+        # endregion Methods
     }
 }

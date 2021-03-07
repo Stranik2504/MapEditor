@@ -1,137 +1,76 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Content;
 using System.IO;
-using System.Diagnostics;
-using System.Xml.Serialization; //XML
 
 namespace MapEditor.Classes
 {
+    public delegate void SetCharacteristic(int x, int y, float width, float height, float rotation, string way, string name);
     class Component
     {
-        #region Создание
+        #region Create
         private Texture2D texture;
         private Rectangle boundingBox;
-        private Rectangle mouseBoundingBox;
         private Vector2 position;
-        private MouseState mouse;
-        private KeyboardState keyboard;
-        private float differenceWidth;
-        private float differenceHeight;
-        private float widthObject;
-        private float heightObject;
-        private int widht;
+        private Vector2 deviationPosition;
+        private Color color;
+        private ClassFrame.Frame frame;
+        private int width;
         private int height;
         private int widthCell;
-        private int x;
-        private int y;
-        private int ratio = 1;
+        private float widthObject;
+        private float heightObject;
+        private float differentWidth;
+        private float differentHeight;
+        private float rotation;
+        private float alpha;
         private string way;
         private string name;
-        private bool go;
+        private bool isVisible;
         private bool activate;
-        private bool activate2;
-        private bool activeField;
-        private bool click = false;
-        #endregion Создание
+        private bool activateInfo;
+        private bool mouseMove;
+        private bool activateField = false;
+        private bool activateFrame = false;
+        public event SetCharacteristic setCharacteristic;
+        public event SetCharacteristic setCharacteristicSave;
+        #endregion Create
 
-        #region Публичные поля
-        public int X { get { return x; } }
-        public int Y { get { return y; } }
-        public int WidthObject { get { return (int)widthObject; } }
-        public int HeightObject { get { return (int)heightObject; } }
-        public int Ration { set { ratio = value; } }
-        public string Name { get { return name; } }
-        public string Ways { get { return way; } }
-        public bool Go { get { return go; } }
+        #region Public fields
         public bool Activate { get { return activate; } }
-        #endregion Публичные поля
+        #endregion Public fields
 
-        #region Реализация
+        #region Methods
 
-        public Component(Vector2 position, string way, int widht, int height)
+        private void UpdateActivateInfo(GameTime gameTime, MouseState mouse, Rectangle mouseBoundingBox, KeyboardState keyboard)
         {
-            this.way = way;
-            this.position = position;
-            this.widht = widht;
-            this.height = height;
-        }
-
-        public void Way(string way)
-        {
-            this.way = way;
-        }
-
-        public void LoadContent(GraphicsDevice GraphicsDevice)
-        {
-            texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@way));
-            widthObject = texture.Width;
-            heightObject = texture.Height;
-        }
-
-        private void UpdateMoveMouse(GameTime gameTime, bool af)
-        {
-            mouse = Mouse.GetState();
-            boundingBox = new Rectangle((int)position.X, (int)position.Y, (int)widthObject, (int)heightObject);
-            mouseBoundingBox = new Rectangle((int)mouse.Position.X, (int)mouse.Position.Y, 0, 0);
             if (mouseBoundingBox.Intersects(boundingBox))
             {
-                if (mouse.LeftButton == ButtonState.Pressed)
+                if (mouse.X <= width - 300)
                 {
-                    go = true;
+                    if (mouse.LeftButton == ButtonState.Pressed)
+                    {
+                        activate = true;
+                    }
                 }
             }
 
-            if (mouse.LeftButton == ButtonState.Released)
+            if (mouseBoundingBox.Intersects(boundingBox) == false)
             {
-                click = false;
-                go = false;
-            }
-
-            if (af == false)
-            {
-                if (go == true)
+                if (mouse.X <= width - 300)
                 {
-                    if (click == false)
+                    if (mouse.LeftButton == ButtonState.Pressed)
                     {
-                        differenceWidth = mouse.Position.X - position.X;
-                        differenceHeight = mouse.Position.Y - position.Y;
-                        click = true;
+                        if (mouseMove == false) { activate = false; }
                     }
-                    position.X = mouse.Position.X - differenceWidth;
-                    position.Y = mouse.Position.Y - differenceHeight;
-                }
-            }
-
-            if (af == true)
-            {
-                if (go == true)
-                {
-                    if (click == false)
-                    {
-                        differenceWidth = mouse.Position.X - position.X;
-                        differenceHeight = mouse.Position.Y - position.Y;
-                        click = true;
-                    }
-                    position.X = mouse.Position.X - differenceWidth;
-                    position.Y = mouse.Position.Y - differenceHeight;
-                    position.X -= (position.X % widthCell);
-                    position.Y -= (position.Y % widthCell);
                 }
             }
         }
 
-        public void Cheak(GameTime gameTime)
+        private void UpdateActivate(GameTime gameTime, MouseState mouse, Rectangle mouseBoundingBox, KeyboardState keyboard)
         {
-            mouse = Mouse.GetState();
-            boundingBox = new Rectangle((int)position.X, (int)position.Y, (int)widthObject, (int)heightObject);
-            mouseBoundingBox = new Rectangle((int)mouse.Position.X, (int)mouse.Position.Y, 0, 0);
-
             if (mouseBoundingBox.Intersects(boundingBox))
             {
                 if (mouse.LeftButton == ButtonState.Pressed)
@@ -140,172 +79,21 @@ namespace MapEditor.Classes
                 }
             }
 
-            if (activate == true)
+            if (mouseBoundingBox.Intersects(boundingBox) == false)
             {
-                if (mouse.LeftButton == ButtonState.Released)
+                if (mouse.LeftButton == ButtonState.Pressed)
                 {
-                    activate2 = true;
-                }
-
-                if (activate2 == true)
-                {
-                    if (mouseBoundingBox.Intersects(boundingBox) == false)
-                    {
-                        if (mouse.LeftButton == ButtonState.Pressed)
-                        {
-                            activate2 = false;
-                            activate = false;
-                        }
-                    }
+                    if (mouseMove == false) { activate = false; }
                 }
             }
         }
 
-        public void Update(GameTime gameTime)
+        private void UpdateMove(KeyboardState keyboard, float speed)
         {
-            if (activeField == true)
+            if (keyboard.IsKeyDown(Keys.W))
             {
-                UpdateMoveKeyboard(gameTime, true);
-                UpdateWidthHeight1(gameTime, true);
-                UpdateMoveMouse(gameTime, true);
+                position.Y -= speed;
             }
-            else
-            {
-                UpdateMoveMouse(gameTime, false);
-                UpdateMoveKeyboard(gameTime, false);
-                UpdateWidthHeight1(gameTime, false);
-            }
-        }
-
-        private void UpdateMoveKeyboard(GameTime gameTime, bool af)
-        {
-            keyboard = Keyboard.GetState();
-
-            if (af == false)
-            {
-                if (keyboard.IsKeyDown(Keys.LeftShift))
-                {
-                    if (keyboard.IsKeyDown(Keys.Q))
-                    {
-
-                    }
-                    else
-                    {
-                        if (keyboard.IsKeyDown(Keys.E))
-                        {
-
-                        }
-                        else
-                        {
-                            UpdateMoveKeyboard2(gameTime, 1);
-                        }
-                    }
-                }
-                else
-                {
-                    if (keyboard.IsKeyDown(Keys.LeftControl))
-                    {
-                        if (keyboard.IsKeyDown(Keys.Q))
-                        {
-
-                        }
-                        else
-                        {
-                            if (keyboard.IsKeyDown(Keys.E))
-                            {
-
-                            }
-                            else
-                            {
-                                UpdateMoveKeyboard2(gameTime, 20);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (keyboard.IsKeyDown(Keys.Q))
-                        {
-
-                        }
-                        else
-                        {
-                            if (keyboard.IsKeyDown(Keys.E))
-                            {
-
-                            }
-                            else
-                            {
-                                UpdateMoveKeyboard2(gameTime, 10);
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (keyboard.IsKeyDown(Keys.LeftShift))
-                {
-                    if (keyboard.IsKeyDown(Keys.Q))
-                    {
-
-                    }
-                    else
-                    {
-                        if (keyboard.IsKeyDown(Keys.E))
-                        {
-
-                        }
-                        else
-                        {
-                            UpdateMoveKeyboard2(gameTime, widthCell);
-                        }
-                    }
-                }
-                else
-                {
-                    if (keyboard.IsKeyDown(Keys.LeftControl))
-                    {
-                        if (keyboard.IsKeyDown(Keys.Q))
-                        {
-
-                        }
-                        else
-                        {
-                            if (keyboard.IsKeyDown(Keys.E))
-                            {
-
-                            }
-                            else
-                            {
-                                UpdateMoveKeyboard2(gameTime, 4 * widthCell);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (keyboard.IsKeyDown(Keys.Q))
-                        {
-
-                        }
-                        else
-                        {
-                            if (keyboard.IsKeyDown(Keys.E))
-                            {
-
-                            }
-                            else
-                            {
-                                UpdateMoveKeyboard2(gameTime, 2 * widthCell);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        private void UpdateMoveKeyboard2(GameTime gameTime, int speed)
-        {
-            keyboard = Keyboard.GetState();
 
             if (keyboard.IsKeyDown(Keys.A))
             {
@@ -321,204 +109,198 @@ namespace MapEditor.Classes
             {
                 position.X += speed;
             }
+        }
 
-            if (keyboard.IsKeyDown(Keys.W))
+        private void MouseMove(MouseState mouse, Rectangle mouseBoundingBox)
+        {
+            if (mouseBoundingBox.Intersects(boundingBox))
             {
-                position.Y -= speed;
+                if (mouse.LeftButton == ButtonState.Pressed)
+                {
+                    if (mouseMove == false)
+                    {
+                        mouseMove = true;
+                        differentWidth = position.X - mouse.X;
+                        differentHeight = position.Y - mouse.Y;
+                    }
+                }
             }
 
-
-
-            if (position.X < 1 - boundingBox.Width)
+            if (mouseMove == true)
             {
-                position.X = 1 - boundingBox.Width;
-            }
-
-            if (position.Y < 1 - boundingBox.Height)
-            {
-                position.Y = 1 - boundingBox.Height;
-            }
-
-            if (position.X + boundingBox.Width > widht + boundingBox.Width - 1)
-            {
-                position.X = widht - 1;
-            }
-
-            if (position.Y + boundingBox.Height > height + boundingBox.Height - 1)
-            {
-                position.Y = height - 1;
+                if (mouse.LeftButton == ButtonState.Released)
+                {
+                    mouseMove = false;
+                }
+                else
+                {
+                    position.X = mouse.X + differentWidth;
+                    position.Y = mouse.Y + differentHeight;
+                }
             }
         }
 
-        private void UpdateWidthHeight1(GameTime gameTime, bool af)
+        private void IncreaseMove(KeyboardState keyboard, int speed, bool Increase)
         {
-            keyboard = Keyboard.GetState();
-
-            if (af == false)
-            {
-                if (keyboard.IsKeyDown(Keys.Q))
-                {
-                    UpdateWidthHeight12(gameTime, 0.1f * ratio);
-                }
-
-                if (keyboard.IsKeyDown(Keys.E))
-                {
-                    UpdateWidthHeight13(gameTime, 0.1f * ratio);
-                }
-            }
-            else
-            {
-                if (keyboard.IsKeyDown(Keys.Q))
-                {
-                    UpdateWidthHeight12(gameTime, widthCell * ratio);
-                }
-
-                if (keyboard.IsKeyDown(Keys.E))
-                {
-                    UpdateWidthHeight13(gameTime, widthCell * ratio);
-                }
-            }
-
-        }
-
-        private void UpdateWidthHeight12(GameTime gameTime, float speed)
-        {
-            keyboard = Keyboard.GetState();
-
             if (keyboard.IsKeyDown(Keys.A))
             {
-                position.X -= speed;
-                widthObject += speed;
-            }
-
-            if (keyboard.IsKeyDown(Keys.D))
-            {
-                widthObject += speed;
+                if (Increase == true) { widthObject += speed; position.X -= speed; } else { widthObject += speed; }
+                if (activateField == true) { widthObject += (widthObject % widthCell); heightObject += (heightObject % widthCell); }
             }
 
             if (keyboard.IsKeyDown(Keys.W))
             {
-                position.Y -= speed;
-                heightObject += speed;
+                if (Increase == true) { heightObject += speed; position.Y -= speed; } else { heightObject += speed; }
+                if (activateField == true) { widthObject += (widthObject % widthCell); heightObject += (heightObject % widthCell); }
             }
 
             if (keyboard.IsKeyDown(Keys.S))
             {
-                heightObject += speed;
-            }
-            boundingBox.Width = (int)widthObject;
-            boundingBox.Height = (int)heightObject;
-        }
-
-        private void UpdateWidthHeight13(GameTime gameTime, float speed)
-        {
-            keyboard = Keyboard.GetState();
-
-            if (widthObject > 0)
-            {
-                if (keyboard.IsKeyDown(Keys.A))
-                {
-                    widthObject -= speed;
-                }
-
-                if (keyboard.IsKeyDown(Keys.D))
-                {
-                    position.X += speed;
-                    widthObject -= speed;
-                }
+                if (Increase == true) { heightObject += speed; } else { heightObject += speed; position.Y -= speed; }
+                if (activateField == true) { widthObject += (widthObject % widthCell); heightObject += (heightObject % widthCell); }
             }
 
-            if (heightObject > 0)
+            if (keyboard.IsKeyDown(Keys.D))
             {
-                if (keyboard.IsKeyDown(Keys.W))
-                {
-                    heightObject -= speed;
-                }
-
-                if (keyboard.IsKeyDown(Keys.S))
-                {
-                    position.Y += speed;
-                    heightObject -= speed;
-                }
-            }
-            boundingBox.Width = (int)widthObject;
-            boundingBox.Height = (int)heightObject;
-        }
-
-        public void ActiveField(bool activeField, int widthCell)
-        {
-            this.activeField = activeField;
-            this.widthCell = widthCell;
-            if (activeField == true)
-            {
-                if (widthCell <= 0)
-                {
-
-                }
-                else
-                {
-                    position.X -= (position.X % widthCell);
-                    position.Y -= (position.Y % widthCell);
-                    widthObject -= (widthObject % widthCell);
-                    heightObject -= (heightObject % widthCell);
-                }
+                if (Increase == true) { widthObject += speed; } else { widthObject += speed; position.X -= speed; }
+                if (activateField == true) { widthObject += (widthObject % widthCell); heightObject += (heightObject % widthCell); }
             }
         }
 
-        public void Draw(SpriteBatch spriteBatch)
+        private void ActivateFrame(GameTime gameTime, MouseState mouse, Rectangle mouseBoundingBox)
         {
-            try
+            for (int i = 0; i < frame.BandBoundingBox.Length; i++)
             {
-                spriteBatch.Draw(texture, boundingBox, Color.White);
+                if (mouseBoundingBox.Intersects(frame.BandBoundingBox[i])) { activateFrame = true; } else { if (activateFrame == false) { activateFrame = false; } }
+                if (mouseBoundingBox.Intersects(frame.BandBoundingBox2[i])) { activateFrame = true; } else { if (activateFrame == false) { activateFrame = false; } }
             }
-            catch { }
+            if (activateField == true) { activate = true; }
+            Console.WriteLine(activateFrame);
+            activateFrame = false;
+            for (int i = 0; i < frame.VerticalBoundingBox.Length; i++)
+            {
+                if (mouseBoundingBox.Intersects(frame.VerticalBoundingBox[i])) { activateFrame = true; } else { if (activateFrame == false) { activateFrame = false; } }
+                if (mouseBoundingBox.Intersects(frame.VerticalBoundingBox[i])) { activateFrame = true; } else { if (activateFrame == false) { activateFrame = false; } }
+            }
+            if (activateField == true) { activate = true; }
+            Console.WriteLine(activateFrame);
+            activateFrame = false;
         }
 
-        public void Save(StreamWriter File1, bool iff, string path)
-        {
-            name = way;
-            name = name.Remove(name.IndexOf("."), name.Length - name.IndexOf("."));
-            while (name.IndexOf(@"\") > -1)
-            {
-                name = name.Remove(0, name.IndexOf(@"\") + 1);
-            }
-            File1.WriteLine(name);
-            File1.WriteLine(position.X);
-            File1.WriteLine(position.Y);
-            File1.WriteLine(widthObject);
-            File1.WriteLine(heightObject);
-            if (iff == true)
-            {
-                File1.WriteLine(path + way);
-            }
-            else
-            {
-                File1.WriteLine(way);
-            }
-        }
+        public void GetFrame(Texture2D textureBand) { frame = new ClassFrame.Frame((int)heightObject, (int)widthObject, (int)position.X, (int)position.Y, 5, 5, textureBand); }
 
-        public void Save2()
+        public void GetCharacteristic(string filePath, string name, Texture2D texture)
         {
-            name = way;
-            name = name.Remove(name.IndexOf("."), name.Length - name.IndexOf("."));
-            while (name.IndexOf(@"\") > -1)
-            {
-                name = name.Remove(0, name.IndexOf(@"\") + 1);
-            }
-            x = (int)position.X;
-            y = (int)position.Y;
-        }
-
-        public void Load(string name, int x, int y, int widthObject, int heightObject, string way)
-        {
+            way = filePath;
             this.name = name;
-            position.X = x;
-            position.Y = y;
+            this.texture = texture;
+            widthObject = texture.Width;
+            heightObject = texture.Height;
+            color = Color.White;
+            deviationPosition = new Vector2(0, 20);
+            position = new Vector2(deviationPosition.X + 0, deviationPosition.Y + 0);
+            isVisible = true;
+        }
+
+        public void GetNewCharacteristic(int x, int y, int width, int height, float rotation, string way, string name)
+        {
+            position = new Vector2(x + deviationPosition.X, y + deviationPosition.Y);
+            widthObject = width;
+            heightObject = height;
+            this.way = way;
+            this.name = name;
+            this.rotation = rotation;
+        }
+
+        public void GetOpenedCharacteristic(GraphicsDevice GraphicsDevice,int x, int y, int widthObject, int heightObject, float rotation, string way, string name)
+        {
+            deviationPosition = new Vector2(0, 20);
+            color = Color.White;
+            position = new Vector2(x + deviationPosition.X, y + deviationPosition.Y);
             this.widthObject = widthObject;
             this.heightObject = heightObject;
             this.way = way;
+            this.name = name;
+            this.rotation = rotation;
+            texture = Texture2D.FromStream(GraphicsDevice, File.OpenRead(@way));
+            isVisible = true;
         }
 
-        #endregion Реализация
+        public void unIsVisible()
+        {
+            isVisible = !isVisible;
+        }
+        
+        public void DisActivate()
+        {
+            activate = false;
+        }
+
+        public void GetWH(int width, int height)
+        {
+            this.width = width;
+            this.height = height;
+        }
+
+        public void Update(GameTime gameTime, MouseState mouse, Rectangle mouseBoundingBox, KeyboardState keyboard)
+        {
+            boundingBox = new Rectangle((int)position.X, (int)position.Y, (int)widthObject, (int)heightObject);
+
+            if (activateInfo == true){ UpdateActivateInfo(gameTime, mouse, mouseBoundingBox, keyboard); } else { UpdateActivate(gameTime, mouse, mouseBoundingBox, keyboard); }
+            if (activate == true)
+            {
+                if (activateField == true)
+                {
+                    if (keyboard.IsKeyDown(Keys.LeftAlt) && keyboard.IsKeyDown(Keys.LeftAlt)) { UpdateMove(keyboard, widthCell); } else { if (keyboard.IsKeyDown(Keys.Q)) { IncreaseMove(keyboard, widthCell, true); } else { if (keyboard.IsKeyDown(Keys.E)) { IncreaseMove(keyboard, -widthCell, false); } else { UpdateMove(keyboard, 2 * widthCell); } } }
+                    if (keyboard.IsKeyDown(Keys.Space)) { UpdateMove(keyboard, 3 * widthCell); }
+                    if (position.X % widthCell != 0) { position.X -= position.X % widthCell; } if (position.Y % widthCell != 0) { position.Y -= position.Y % widthCell; }
+                }
+                else
+                {
+                    if (keyboard.IsKeyDown(Keys.LeftAlt) && keyboard.IsKeyDown(Keys.LeftAlt)) { UpdateMove(keyboard, 0.1f); } else { if (keyboard.IsKeyDown(Keys.Q)) { IncreaseMove(keyboard, 1, true); } else { if (keyboard.IsKeyDown(Keys.E)) { IncreaseMove(keyboard, -1, false); } else { UpdateMove(keyboard, 1); } } }
+                    if (keyboard.IsKeyDown(Keys.Space)) { UpdateMove(keyboard, 2); }
+                }
+                if (keyboard.IsKeyDown(Keys.B)) { position = new Vector2(0 + deviationPosition.X, 0 + deviationPosition.Y); }
+                if (keyboard.IsKeyDown(Keys.R)) { rotation += 0.1f; }
+                if (keyboard.IsKeyDown(Keys.F)) { rotation -= 0.1f; }
+
+                MouseMove(mouse, mouseBoundingBox);
+                SetCharacteristic();
+                frame.Update(gameTime, (int)position.X, (int)position.Y, (int)widthObject, (int)heightObject, rotation);
+            }
+        }
+
+        public void SetCharacteristic()
+        {
+            setCharacteristic((int)position.X - (int)deviationPosition.X, (int)position.Y - (int)deviationPosition.Y, widthObject, heightObject, rotation, way, name);
+        }
+
+        public void SetCharacteristicSave()
+        {
+            setCharacteristicSave((int)position.X - (int)deviationPosition.X, (int)position.Y - (int)deviationPosition.Y, widthObject, heightObject, rotation, way, name);
+        }
+
+        public void ActivateField(int widthCell)
+        {
+            activateField = !activateField;
+            this.widthCell = widthCell;
+        }
+
+        public void GetInfo(bool activateInfo)
+        {
+            this.activateInfo = activateInfo;
+        }
+
+        public void Darw(SpriteBatch spriteBatch)
+        {
+            alpha = MathHelper.ToRadians(rotation);
+            if (isVisible == true)
+            {
+                try { spriteBatch.Draw(texture, boundingBox, null, Color.White, alpha, new Vector2(0, 0), SpriteEffects.None, 1f); } catch { }
+                if (activate == true) { try { frame.Draw(spriteBatch); } catch { } }
+            }
+        }
+
+        #endregion Methods
     }
 }
